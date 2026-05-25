@@ -1,27 +1,37 @@
 import streamlit as st
 from PIL import Image
 import io
+import json
 import sys
 sys.path.append('.')
 from src.vision.extractor import extract_attributes
 from src.search.vector_store import build_catalogue_index, find_similar_products
 
-st.set_page_config(page_title="AI Shopping Agent", page_icon="🛍️", layout="centered")
+st.set_page_config(
+    page_title="AI Shopping Agent",
+    page_icon="🛍️",
+    layout="centered"
+)
 
-# Build catalogue index once when app starts
-# st.cache_resource means it only runs once, not on every rerender
+# Cache the catalogue index — builds once, reused forever
 @st.cache_resource
 def load_index():
     return build_catalogue_index()
+
+# Cache search results — same query doesn't hit API twice
+@st.cache_data
+def cached_search(_index, attributes_str, top_k=5):
+    attributes = json.loads(attributes_str)
+    return find_similar_products(attributes, _index, top_k)
 
 index = load_index()
 
 # ─── Header ────────────────────────────────────────────────────
 st.title("🛍️ AI Shopping Agent")
-st.markdown("Upload a product image to find similar items.")
+st.markdown("Upload a product image to find similar items instantly.")
 st.divider()
 
-# ─── Image upload ───────────────────────────────────────────────
+# ─── Upload ────────────────────────────────────────────────────
 uploaded_file = st.file_uploader(
     "Upload a product image",
     type=["jpg", "jpeg", "png", "webp"]
@@ -34,20 +44,20 @@ if uploaded_file is not None:
     st.divider()
 
     if st.button("🔍 Find Similar Products", type="primary", use_container_width=True):
-        with st.spinner("Analysing image with Gemini..."):
+        with st.spinner("Gemini is analysing your image..."):
             try:
-                # Step 1: Extract attributes from image
-                mime_type = "image/jpeg"
-                if uploaded_file.name.endswith(".png"):
-                    mime_type = "image/png"
-                elif uploaded_file.name.endswith(".webp"):
-                    mime_type = "image/webp"
-
-                attributes = extract_attributes(image_bytes, mime_type=mime_type)
+                # Step 1: Extract attributes
+                attributes = extract_attributes(image_bytes)
                 st.success("Image analysed!")
 
-                # Show what Gemini found
+                # Step 2: Show attributes + confidence
                 st.subheader("📋 Detected Attributes")
+
+                # Confidence bar
+                confidence = attributes.get("confidence", 0)
+                st.markdown(f"**Gemini Confidence:** {confidence}%")
+                st.progress(confidence / 100)
+
                 col1, col2 = st.columns(2)
                 with col1:
                     st.metric("Category", attributes.get("category", "Unknown"))
@@ -60,11 +70,11 @@ if uploaded_file is not None:
 
                 st.divider()
 
-                # Step 2: Find similar products
+                # Step 3: Find similar products (cached)
                 st.subheader("🛍️ Similar Products Found")
-                similar = find_similar_products(attributes, index, top_k=5)
+                attributes_str = json.dumps(attributes)
+                similar = cached_search(index, attributes_str, top_k=5)
 
-                # Display results in a grid
                 cols = st.columns(3)
                 for i, product in enumerate(similar):
                     with cols[i % 3]:
@@ -82,6 +92,11 @@ if uploaded_file is not None:
 
             except Exception as e:
                 st.error(f"Something went wrong: {str(e)}")
+                st.markdown("**Common fixes:**")
+                st.markdown("- Check your internet connection")
+                st.markdown("- Make sure your .env file has the correct Project ID")
+                st.markdown("- Check GCP Console that Vertex AI API is enabled")
+
 else:
     st.markdown(
         """

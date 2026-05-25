@@ -22,3 +22,4 @@ results = find_similar_products(test_attributes, index)
 print("\nTop 5 similar products:")
 for i, product in enumerate(results, 1):
     print(f"{i}. {product['name']} — ₹{product['price']}")
+    
