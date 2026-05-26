@@ -5,7 +5,7 @@
 
 import math
 from src.search.embedder import get_text_embedding, product_to_text, attributes_to_text
-from src.search.catalogue import CATALOGUE
+from src.search.catalogue import CATALOGUE, load_catalogue
 
 def cosine_similarity(vec1: list, vec2: list) -> float:
     """

@@ -3,3 +3,10 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+data/fashion-dataset/images/
+data/fashion-dataset/fashion-dataset/
+data/fashion-dataset/styles/
+*.jpg
+*.jpeg
+*.png
+*.csv
