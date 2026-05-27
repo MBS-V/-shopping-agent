@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import random
 
-def load_catalogue(max_products: int = 500) -> list:
+def load_catalogue(max_products: int = 2000) -> list:
     csv_path = "data/fashion-dataset/styles.csv"
 
     if not os.path.exists(csv_path):
@@ -10,7 +10,19 @@ def load_catalogue(max_products: int = 500) -> list:
 
     df = pd.read_csv(csv_path, on_bad_lines='skip')
     df = df.dropna(subset=['productDisplayName', 'baseColour', 'articleType'])
-    df = df.head(max_products)
+
+    # Stratified sampling — take equal products per category
+    # This ensures diversity regardless of how CSV is sorted
+    categories = df['articleType'].unique()
+    per_category = 25 
+
+    sampled = []
+    for category in categories:
+        category_df = df[df['articleType'] == category]
+        sample_size = min(per_category, len(category_df))
+        sampled.append(category_df.sample(n=sample_size, random_state=42))
+
+    df = pd.concat(sampled)
 
     products = []
     for _, row in df.iterrows():
@@ -24,7 +36,7 @@ def load_catalogue(max_products: int = 500) -> list:
             "gender": row['gender'].lower(),
             "price": _estimate_price(row['articleType'], row['masterCategory'], str(row['id'])),
             "season": row['season'] if pd.notna(row['season']) else "All Season",
-            "image_url": f"data/fashion-dataset/images/{row['id']}.jpg"    
+            "image_url": f"data/fashion-dataset/images/{row['id']}.jpg"
         }
         products.append(product)
 

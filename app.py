@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 # ─── Cache index ────────────────────────────────────────────────
-@st.cache_resource(show_spinner="Building product index  ")
+@st.cache_resource(show_spinner="Building product index for first time. This takes a few minutes and won't happen again.")
 def load_index():
     return build_catalogue_index()
 
@@ -32,7 +32,7 @@ st.title("AI Shopping Agent")
 st.caption("Upload a product image to find similar items.")
 st.divider()
 
-# ─── Improvement 5: Search history sidebar ───────────────────────
+# ─── Search history sidebar ──────────────────────────────────────
 with st.sidebar:
     st.header("Search History")
     if "history" not in st.session_state:
@@ -49,7 +49,7 @@ uploaded_file = st.file_uploader(
     type=["jpg", "jpeg", "png", "webp"]
 )
 
-# ─── Improvement 3: Price filter slider ─────────────────────────
+# ─── Price filter slider ─────────────────────────────────────────
 max_price = st.slider(
     "Maximum price (Rs.)",
     min_value=500,
@@ -62,11 +62,10 @@ max_price = st.slider(
 if uploaded_file is not None:
     image_bytes = uploaded_file.read()
 
-    # ─── Improvement 4: Smart mime detection ────────────────────
+    # Smart mime detection
     image = Image.open(io.BytesIO(image_bytes))
-    mime_type = f"image/{image.format.lower()}"
-    if image.format.lower() == "jpg":
-        mime_type = "image/jpeg"
+    fmt = image.format.lower() if image.format else "jpeg"
+    mime_type = "image/jpeg" if fmt == "jpg" else f"image/{fmt}"
 
     st.image(image, caption="Uploaded image", use_container_width=True)
     st.divider()
@@ -74,17 +73,17 @@ if uploaded_file is not None:
     if st.button("Find Similar Products", type="primary", use_container_width=True):
         with st.spinner("Analysing image..."):
             try:
-                # Step 1: Extract attributes
+                # Step 1: Extract attributes from image
                 attributes = extract_attributes(image_bytes, mime_type=mime_type)
 
-                # Step 2: Run agent pipeline
+                # Step 2: Run LangGraph agent pipeline
                 result = run_agent(
                     attributes=attributes,
                     index=index,
                     max_price=max_price if max_price < 20000 else None
                 )
 
-                # Step 3: Save to history
+                # Step 3: Save to search history
                 st.session_state["history"].append({
                     "category": attributes.get("category", "unknown"),
                     "colour": attributes.get("colour", "unknown")
@@ -93,12 +92,12 @@ if uploaded_file is not None:
                 # ─── Results ────────────────────────────────────
                 st.success("Analysis complete.")
 
-                # Confidence
+                # Confidence bar
                 confidence = attributes.get("confidence", 0)
                 st.caption(f"Gemini confidence: {confidence}%")
                 st.progress(confidence / 100)
 
-                # Attributes
+                # Detected attributes grid
                 st.subheader("Detected Attributes")
                 col1, col2 = st.columns(2)
                 with col1:
@@ -112,7 +111,7 @@ if uploaded_file is not None:
 
                 st.divider()
 
-                # Agent recommendation — no emojis, natural language
+                # Agent recommendation
                 st.subheader("Recommendation")
                 st.markdown(result["recommendation"])
                 st.caption(f"Agent steps: {' → '.join([s for s in result['steps_taken'] if s])}")
@@ -122,34 +121,40 @@ if uploaded_file is not None:
                 # Similar products grid
                 st.subheader("Similar Products")
 
-                # Show price filter info
                 if max_price < 20000:
                     st.caption(f"Showing results under Rs.{max_price}")
 
                 products = result["products"]
+
                 if not products:
-                    st.warning("No products found under that price. Try raising the price filter.")
+                    st.warning(
+                        "No similar products found in our catalogue for this image. "
+                        "Try uploading a fashion product like shoes, clothing, or accessories."
+                    )
                 else:
                     cols = st.columns(3)
                     for i, product in enumerate(products):
-                      with cols[i % 3]:
-                           # Use local image if it exists, fallback to placeholder
+                        with cols[i % 3]:
                             img_path = product['image_url']
                             if os.path.exists(img_path):
-                                 st.image(img_path, use_container_width=True)
+                                st.image(img_path, use_container_width=True)
                             else:
-                                 st.image(
+                                st.image(
                                     f"https://picsum.photos/seed/{product['id']}/300/400",
-                                     use_container_width=True
-                                    )
+                                    use_container_width=True
+                                )
                             st.markdown(f"**{product['name']}**")
                             st.markdown(f"Rs.{product['price']}")
-                            st.caption(f"{product['style'].title()} · {product['colour'].title()}")
+                            st.caption(
+                                f"{product['style'].title()} · {product['colour'].title()}"
+                            )
 
                 st.divider()
 
-                # ─── Improvement 2: Multiple image note ─────────
-                st.info("Tip: Try uploading different product types to explore the catalogue.")
+                st.info(
+                    "This catalogue contains 2,638 fashion products across 143 categories. "
+                    "Results are ranked by visual similarity using text embeddings."
+                )
 
                 with st.expander("Raw JSON from Gemini"):
                     st.json(attributes)
@@ -169,3 +174,4 @@ else:
         """,
         unsafe_allow_html=True
     )
+    

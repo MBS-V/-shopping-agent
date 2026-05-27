@@ -52,12 +52,21 @@ def build_catalogue_index(force_rebuild: bool = False) -> list:
     print(f"Index saved to {INDEX_CACHE_PATH}")
     return index
 
-def find_similar_products(attributes: dict, index: list, top_k: int = 5) -> list:
+def find_similar_products(attributes: dict, index: list, top_k: int = 5, threshold: float = 0.5) -> list:
     query_text = attributes_to_text(attributes)
     query_embedding = get_text_embedding(query_text)
+
     scored = []
     for product, product_embedding in index:
         score = cosine_similarity(query_embedding, product_embedding)
         scored.append((score, product))
+
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [product for score, product in scored[:top_k]]
+
+    # Only return results above similarity threshold
+    filtered = [(score, product) for score, product in scored if score >= threshold]
+
+    if not filtered:
+        return []  # No relevant results found
+
+    return [product for score, product in filtered[:top_k]]
