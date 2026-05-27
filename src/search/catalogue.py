@@ -1,32 +1,17 @@
-# catalogue.py
-# Loads the real Fashion Product Dataset (44,000+ products)
-# from the Kaggle paramaggarwal dataset.
-# Columns: id, gender, masterCategory, subCategory, 
-#           articleType, baseColour, season, usage, productDisplayName
-
 import pandas as pd
 import os
+import random
 
 def load_catalogue(max_products: int = 500) -> list:
-    """
-    Loads fashion products from styles.csv.
-    max_products: how many to load (500 is fast, 5000 is impressive)
-    Returns a list of product dictionaries matching our app's format.
-    """
     csv_path = "data/fashion-dataset/styles.csv"
 
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"Dataset not found at {csv_path}")
 
     df = pd.read_csv(csv_path, on_bad_lines='skip')
-
-    # Drop rows with missing critical fields
     df = df.dropna(subset=['productDisplayName', 'baseColour', 'articleType'])
-
-    # Take a sample for speed — increase later
     df = df.head(max_products)
 
-    # Convert each row into our standard product dictionary
     products = []
     for _, row in df.iterrows():
         product = {
@@ -37,44 +22,63 @@ def load_catalogue(max_products: int = 500) -> list:
             "style": row['usage'].lower() if pd.notna(row['usage']) else "casual",
             "material": "unknown",
             "gender": row['gender'].lower(),
-            "price": _estimate_price(row['articleType'], row['masterCategory']),
+            "price": _estimate_price(row['articleType'], row['masterCategory'], str(row['id'])),
             "season": row['season'] if pd.notna(row['season']) else "All Season",
-            "image_url": f"https://picsum.photos/seed/{row['id']}/300/400"
+            "image_url": f"data/fashion-dataset/images/{row['id']}.jpg"    
         }
         products.append(product)
 
     print(f"Loaded {len(products)} products from Fashion Dataset")
     return products
 
-def _estimate_price(article_type: str, master_category: str) -> int:
+def _estimate_price(article_type: str, master_category: str, product_id: str) -> int:
     """
-    Estimates price in rupees based on product category.
-    Real dataset has no prices so we generate realistic ones.
+    Generates realistic varied prices using product ID as seed.
+    Same product always gets same price (deterministic).
+    Prices vary within a realistic range per category.
     """
-    price_map = {
-        "Watches": 8999, "Handbags": 4999, "Shoes": 5999,
-        "Casual Shoes": 3999, "Sports Shoes": 4499, "Formal Shoes": 5999,
-        "Heels": 3499, "Flats": 2499, "Sandals": 1999,
-        "Shirts": 1499, "Jeans": 2499, "Tops": 1299,
-        "Dresses": 2999, "Kurtas": 1799, "Sarees": 3999,
-        "Jackets": 3999, "Sweaters": 2499, "Sweatshirts": 1999,
-        "Shorts": 1299, "Trousers": 2299, "Skirts": 1799,
-        "Sunglasses": 1999, "Belts": 999, "Wallets": 1499,
-        "Caps": 799, "Socks": 299, "Innerwear": 499,
-        "Perfumes": 2999, "Jewellery": 1999,
-    }
-    # Check article type first, then fall back to category-based estimate
-    for key, price in price_map.items():
-        if key.lower() in article_type.lower():
-            return price
-    # Default by master category
-    if master_category == "Footwear":
-        return 3999
-    elif master_category == "Accessories":
-        return 1999
-    elif master_category == "Apparel":
-        return 1999
-    return 1499
+    # Use product ID as random seed for consistency
+    random.seed(int(product_id) if product_id.isdigit() else hash(product_id))
 
-# Load catalogue once at module level
-CATALOGUE = load_catalogue(max_products=500)
+    price_ranges = {
+        "Watches": (2999, 15999),
+        "Handbags": (1999, 8999),
+        "Formal Shoes": (2999, 8999),
+        "Casual Shoes": (1499, 5999),
+        "Sports Shoes": (1999, 6999),
+        "Heels": (1499, 4999),
+        "Flats": (999, 3499),
+        "Sandals": (799, 2999),
+        "Shirts": (799, 2999),
+        "Jeans": (1299, 4499),
+        "Tops": (699, 2499),
+        "Dresses": (1499, 5999),
+        "Kurtas": (899, 3499),
+        "Jackets": (1999, 6999),
+        "Sweaters": (999, 3999),
+        "Sweatshirts": (799, 2999),
+        "Shorts": (599, 1999),
+        "Trousers": (999, 3999),
+        "Sunglasses": (799, 3999),
+        "Belts": (499, 1999),
+        "Wallets": (599, 2499),
+        "Caps": (399, 1299),
+        "Socks": (199, 599),
+        "Perfumes": (1499, 5999),
+        "Jewellery": (499, 3999),
+    }
+
+    for key, (low, high) in price_ranges.items():
+        if key.lower() in article_type.lower():
+            return random.randint(low, high)
+
+    if master_category == "Footwear":
+        return random.randint(1499, 5999)
+    elif master_category == "Accessories":
+        return random.randint(499, 3999)
+    elif master_category == "Apparel":
+        return random.randint(699, 3999)
+
+    return random.randint(699, 2999)
+
+CATALOGUE = load_catalogue(max_products=2000)

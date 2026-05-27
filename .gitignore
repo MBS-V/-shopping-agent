@@ -6,6 +6,7 @@ __pycache__/
 data/fashion-dataset/images/
 data/fashion-dataset/fashion-dataset/
 data/fashion-dataset/styles/
+data/index.pkl
 *.jpg
 *.jpeg
 *.png
