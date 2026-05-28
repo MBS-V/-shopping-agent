@@ -36,7 +36,7 @@ def load_catalogue(max_products: int = 2000) -> list:
             "gender": row['gender'].lower(),
             "price": _estimate_price(row['articleType'], row['masterCategory'], str(row['id'])),
             "season": row['season'] if pd.notna(row['season']) else "All Season",
-            "image_url": f"data/fashion-dataset/images/{row['id']}.jpg"
+           "image_url": f"https://storage.googleapis.com/shopping-agent-images/products/{row['id']}.jpg"
         }
         products.append(product)
 

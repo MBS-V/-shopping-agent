@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 # ─── Cache index ────────────────────────────────────────────────
-@st.cache_resource(show_spinner="Building product index for first time. This takes a few minutes and won't happen again.")
+@st.cache_resource(show_spinner="Building product index ...") # Cache the index to speed up repeated searches,happens only once on app load or when code changes
 def load_index():
     return build_catalogue_index()
 
@@ -135,14 +135,7 @@ if uploaded_file is not None:
                     cols = st.columns(3)
                     for i, product in enumerate(products):
                         with cols[i % 3]:
-                            img_path = product['image_url']
-                            if os.path.exists(img_path):
-                                st.image(img_path, use_container_width=True)
-                            else:
-                                st.image(
-                                    f"https://picsum.photos/seed/{product['id']}/300/400",
-                                    use_container_width=True
-                                )
+                            st.image(product['image_url'], use_container_width=True)
                             st.markdown(f"**{product['name']}**")
                             st.markdown(f"Rs.{product['price']}")
                             st.caption(
