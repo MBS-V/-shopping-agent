@@ -96,7 +96,7 @@ gcloud config set project your-project-id
 streamlit run app.py
 ```
 
-First load builds the embedding index (~5 minutes). Cached to disk after that.
+First load downloads the pre-built embedding index from Google Cloud Storage (~18MB, 10-15 seconds). Cached to disk after that — subsequent loads are instant.
 
 ---
 
